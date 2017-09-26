@@ -233,7 +233,7 @@ void iCycle() {
             {
                 for (int j = 0; j < width; ++j)
                 {
-                    
+
                 }
             }
 
@@ -241,6 +241,27 @@ void iCycle() {
         }
             break;
         case 0xE000:
+            switch(opcode & 0xFF) {
+                // EX9E Skips the next instruction if the key stored in VX is pressed
+                case 0x9E:
+                    if (key[(opcode & 0xF00) >> 8] != 0) {
+                        pc += 4;
+                    } else {
+                        pc += 2;
+                    }
+                    break;
+                // EXA1 Skips the next instruction if the key stored in VX isn't pressed.
+                case 0XA1:
+                    if (key[(opcode & 0xF00) >> 8] == 0) {
+                        pc += 4;
+                    } else {
+                        pc += 2;
+                    }
+                    break;
+                default:
+                    printf("Not opcode %X\n", opcode);
+            }
+            break;
         case 0xF000:
     }
     // execute
