@@ -233,7 +233,10 @@ void iCycle() {
             {
                 for (int j = 0; j < width; ++j)
                 {
-
+                    if (graphic[x + j + ((y + i) * 64)] == 1) {
+                        V[0xF] = 1;
+                    }
+                    graphic[x + j + ((y + i) * 64)] ^= 1;
                 }
             }
 
@@ -263,6 +266,67 @@ void iCycle() {
             }
             break;
         case 0xF000:
+            switch(opcode & 0xFF) {
+                // FX07 Sets VX to the value of the delay timer.
+                case 0x07:
+                    V[(opcode & 0xF00) >> 8] = delay_timer;
+                    pc += 2;
+                    break;
+                // FX0A A key press is awaited, and then stored in VX. (Blocking Operation. All instruction halted until next key event)
+                case 0x0A:
+                {
+                    bool press = false;
+                    for (int i = 0; i < 16; ++i)
+                    {
+                        if(key[i] != 0) {
+                            V[(opcode & 0xF00) >> 8] = i;
+                            press = true;
+                        }
+                    }
+                    if (!press) {
+                        return;
+                    }
+                    pc += 2;
+                }
+                break;
+                // FX15 Sets the delay timer to VX.
+                case 0x15:
+                    delay_timer = V[(opcode & 0xF00) >> 8];
+                    pc += 2;
+                    break;
+                // FX18 Sets the sound timer to VX.
+                case 0x18:
+                    sound_timer = V[(opcode & 0xF00) >> 8];
+                    pc += 2;
+                    break;
+                // FX1E Adds VX to I
+                case 0x1E:
+                    if ((I + V[(opcode & 0xF00) >> 8]) > 0xFFF) {
+                        V[0xF] = 1;
+                    } else {
+                        V[0xF] = 0;
+                    }
+                    I += V[(opcode & 0xF00) >> 8];
+                    pc += 2;
+                    break;
+                // FX29 Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font.
+                case 0x29:
+                    I = V[(opcode & 0xF00) >> 8] * 0x5;
+                    pc += 2;
+                    break;
+                // FX33 Stores the binary-coded decimal representation of VX, with the most significant of three digits at the address in I, 
+                // the middle digit at I plus 1, and the least significant digit at I plus 2. (In other words, take the decimal representation of VX, 
+                // place the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.)
+                case 0x33:
+                    memory[I] = V[(opcode & 0xF00) >> 8] / 100;
+                    memory[I + 1] = (V[(opcode & 0xF00) >> 8] / 10) % 10;
+                    memory[I + 2] = (V[(opcode & 0xF00) >> 8] % 100) % 10;
+                    pc += 2;
+                    break;
+                // FX55 Stores V0 to VX (including VX) in memory starting at address I. I is increased by 1 for each value written.
+                case 0x55:
+                    
+            }
     }
     // execute
 
