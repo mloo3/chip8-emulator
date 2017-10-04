@@ -22,7 +22,10 @@ struct Chip8 {
 
     bool updateScreen;
 
-    void (*cycle);
-    void (*load)(const char*);
+    // void (*cycle)(struct Chip8);
+    // bool (*load)(const char*);
 
 };
+void cycle(struct Chip8);
+// bool load(const char*);
+bool load(const char*, struct Chip8);
