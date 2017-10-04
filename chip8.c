@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <stdbool.h>
 
 unsigned char fontset[80] =
 { 
@@ -24,43 +23,44 @@ unsigned char fontset[80] =
   0xF0, 0x80, 0xF0, 0x80, 0x80  // F
 };
 
-void init() {
-	opcode = 0;
-	I = 0;
+void init(struct Chip8 chip8) {
+	chip8.opcode = 0;
+	chip8.I = 0;
 	// 0x200-0xFFF - Program ROM and work RAM
-	pc = 0x200;
-	sp = 0;
+	chip8.pc = 0x200;
+	chip8.sp = 0;
     //clear mem, registers, display, stack
 	for (int i = 0; i < 4096; ++i)
 	{
-		memory[i] = 0;
+		chip8.memory[i] = 0;
 	}
     for (int i = 0; i < 16; ++i)
     {
-        V[i] = 0;
+        chip8.V[i] = 0;
     }
     for (int i = 0; i < 2048; ++i)
     {
-        graphic[i] = 0;
+        chip8.graphic[i] = 0;
     }
+    chip8.updateScreen = true;
     for (int i = 0; i < 16; ++i)
     {
-        stack[i] = 0;
+        chip8.stack[i] = 0;
     }
     // reset timers
-    delay_timer = 0;
-    sound_timer = 0;
+    chip8.delay_timer = 0;
+    chip8.sound_timer = 0;
     // fontset loaded to 0x50
     for (int i = 0; i < 80; ++i)
     {
-        memory[i] = fontset[i];
+        chip8.memory[i] = fontset[i];
     }
 }
 
-void iCycle() {
+void cycle() {
     // fetch
 	opcode = ((memory[pc] << 8) | memory[pc + 1]) & 0xFFFF;
-    // decode
+    // decode/execute
     switch(opcode & 0xF000) {
         case 0x0000:
             switch(opcode & 0xF) {
@@ -70,6 +70,7 @@ void iCycle() {
                     {
                         graphic[i] = 0;
                     }
+                    updateScreen = true;
                     pc += 2;
                     break;
                 // 00EE returns from a subroutine
@@ -241,7 +242,7 @@ void iCycle() {
                     }
                 }
             }
-
+            updateScreen = true;
             pc += 2;
         }
             break;
@@ -352,6 +353,7 @@ void iCycle() {
             printf("Not opcode %X\n", opcode);
     }
 
+    // update timers
     if (delay_timer > 0) {
         delay_timer--;
     }
@@ -365,15 +367,50 @@ void iCycle() {
 }
 
 bool load(const char* filename) {
-
-
-
-    FILE* file = fopen(filename, "rb");
-
-    for (int i = 0; i < bufferSize; ++i)
-    {
-        memory[i+512] = buffer[i]
+    struct Chip8 chip8;
+    init(chip8);
+    printf("fopen %s\n", filename);
+    FILE* fp = fopen(filename, "rb");
+    if (fp == NULL) {
+        printf("file null\n");
+        fclose(fp);
+        return false;
     }
+
+    // get size of file
+    // seek to end of file then asks for position
+    fseek(fp, 0L, SEEK_END);
+    long sz = ftell(fp);
+    // go back to the beginning
+    rewind(fp);
+
+    // malloc for file size
+    char* buffer = malloc(sizeof(char) * sz);
+
+    // file into buffer
+    if (buffer != NULL) {
+        fread(buffer, 1, sz, fp);
+    } else {
+        printf("buffer null \n");
+        fclose(fp);
+        return false;
+    }
+
+    // make sure filesize is < space for program (4096 - 512)
+    if (sz < 3584) {
+        for (int i = 0; i < sz; ++i)
+        {
+            chip8.memory[512 + i] = buffer[i];
+        }
+    } else {
+        printf("filesize too big for chip 8\n");
+        fclose(fp);
+        free(buffer);
+        return false;
+    }
+
+    fclose(fp);
+    free(buffer);
 
     return true;
 }
