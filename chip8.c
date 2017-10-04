@@ -59,7 +59,7 @@ void init() {
 
 void iCycle() {
     // fetch
-	opcode = (memory[pc] << 8) | memory[pc + 1];
+	opcode = ((memory[pc] << 8) | memory[pc + 1]) & 0xFFFF;
     // decode
     switch(opcode & 0xF000) {
         case 0x0000:
@@ -168,11 +168,10 @@ void iCycle() {
                     V[(opcode & 0xF00) >> 8] -= V[(opcode & 0xF0) >> 4];
                     pc += 2;
                     break;
-                // 8XY6 Shifts VY right by one and copies the result to VX. VF is set to the value of the least significant bit of VY before the shift.
+                // 8XY6 Shifts VX right by one. VF is set to the value of the least significant bit of VX before the shift.
                 case 0x6:
                     V[(0xF)] = V[(opcode & 0xF00) >> 8] & 0x1;
-                    V[(opcode & 0xF0) >> 4] >>= 1;
-                    V[(opcode & 0xF00) >> 8] = V[(opcode & 0xF0) >> 4];
+                    V[(opcode & 0xF00) >> 8] >>=  1;
                     pc += 2;
                     break;
                 // 8XY7 Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
@@ -185,11 +184,10 @@ void iCycle() {
                     V[(opcode & 0xF00) >> 8] = V[(opcode & 0xF0) >> 4] - V[(opcode & 0xF00) >> 8];
                     pc += 2;
                     break;
-                // 8XYE Shifts VY left by one and copies the result to VX. VF is set to the value of the most significant bit of VY before the shift
+                // 8XYE Shifts VX left by one. VF is set to the value of the most significant bit of VX before the shift
                 case 0xE:
-                    V[(0xF)] = V[(opcode & 0xF00) >> 8] & 0x1;
-                    V[(opcode & 0xF0) >> 4] <<= 1;
-                    V[(opcode & 0xF00) >> 8] = V[(opcode & 0xF0) >> 4];
+                    V[(0xF)] = V[(opcode & 0xF00) >> 8] >> 7;
+                    V[(opcode & 0xF00) >> 8] <<= 1;
                     pc += 2;
                     break;
                 default:
@@ -226,17 +224,21 @@ void iCycle() {
         {
             unsigned short x = V[(opcode & 0xF00) >> 8];
             unsigned short y = V[(opcode & 0xF0) >> 4];
-            unsigned width = 8;
-            unsigned height = opcode & 0xF;
+            unsigned short width = 8;
+            unsigned short height = opcode & 0xF;
+            unsigned short pixel;
 
             for (int i = 0; i < height; ++i)
             {
+                pixel = memory[I + i];
                 for (int j = 0; j < width; ++j)
                 {
-                    if (graphic[x + j + ((y + i) * 64)] == 1) {
-                        V[0xF] = 1;
+                    if (pixel & (0x80 >> j) != 0) {
+                        if (graphic[x + j + ((y + i) * 64)] == 1) {
+                            V[0xF] = 1;
+                        }
+                        graphic[x + j + ((y + i) * 64)] ^= 1;
                     }
-                    graphic[x + j + ((y + i) * 64)] ^= 1;
                 }
             }
 
@@ -325,10 +327,40 @@ void iCycle() {
                     break;
                 // FX55 Stores V0 to VX (including VX) in memory starting at address I. I is increased by 1 for each value written.
                 case 0x55:
+                    for (int i = 0; i < ((opcode & 0xF00) >> 8); ++i)
+                    {
+                        memory[I + i] = V[i];
+                    }
+                    I += ((opcode & 0xF00) >> 8) + 1;
+                    pc += 2;
+                    break;
+                // FX65 Fills V0 to VX (including VX) with values from memory starting at address I. I is increased by 1 for each value written.
+                case 0x65:
+                    for (int i = 0; i < ((opcode & 0xF00) >> 8); ++i)
+                    {   
+                        V[i] = memory[I + i];
+                    }
+                    I += ((opcode & 0xF00) >> 8) + 1;
+                    pc += 2;
+                    break;
+                default:
+                    printf("Not opcode %X\n", opcode);
                     
             }
+            break;
+        default:
+            printf("Not opcode %X\n", opcode);
     }
-    // execute
+
+    if (delay_timer > 0) {
+        delay_timer--;
+    }
+    if (sound_timer > 0) {
+        if (sound_timer == 1) {
+            printf("BEEP\n");
+        }
+        sound_timer--;
+    }
 
 }
 
