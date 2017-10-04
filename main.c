@@ -32,9 +32,12 @@ int main(int argc, char *argv[])
 
 	// load game
 	// chip8.load = load;
-	if (load(argv[1],chip8)) {
+	if (!load(argv[1],&chip8)) {
 		return 1;
 	}
+
+	printf("%d\n", chip8.opcode);
+	printf("################################\n");
 
 	// setup opengl
 	glutInit(&argc, argv);
@@ -82,7 +85,7 @@ void setupTexture() {
 	glEnable(GL_TEXTURE_2D);
 }
 
-void updateTexture(const struct Chip8* c8) {
+void updateTexture(struct Chip8* c8) {
 	// update pixels
 	for(int y = 0; y < 32; ++y)		
 		for(int x = 0; x < 64; ++x)
@@ -113,7 +116,7 @@ void drawPixel(int x, int y)
 	glEnd();
 }
 
-void updateQuads(const struct Chip8* c8)
+void updateQuads(struct Chip8* c8)
 {
 	// Draw
 	for(int y = 0; y < 32; ++y)		
@@ -132,7 +135,7 @@ void display()
 {
 	// chip8.cycle = cycle;
 	// chip8.cycle(chip8);
-	cycle(chip8);
+	cycle(&chip8);
 	if(chip8.updateScreen)
 	{
 		// Clear framebuffer

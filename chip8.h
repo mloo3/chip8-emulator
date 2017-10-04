@@ -21,11 +21,6 @@ struct Chip8 {
     unsigned char key[16];
 
     bool updateScreen;
-
-    // void (*cycle)(struct Chip8);
-    // bool (*load)(const char*);
-
 };
-void cycle(struct Chip8);
-// bool load(const char*);
-bool load(const char*, struct Chip8);
+void cycle(struct Chip8* chip8);
+bool load(const char* filename, struct Chip8* chip8);
