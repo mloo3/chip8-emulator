@@ -24,3 +24,4 @@ struct Chip8 {
 };
 void cycle(struct Chip8* chip8);
 bool load(const char* filename, struct Chip8* chip8);
+void init(struct Chip8* chip8);

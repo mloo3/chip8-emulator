@@ -55,11 +55,18 @@ void init(struct Chip8* chip8) {
     {
         chip8->memory[i] = fontset[i];
     }
+    srand(time(NULL));
 }
 
 void cycle(struct Chip8* chip8) {
     // fetch
 	chip8->opcode = ((chip8->memory[chip8->pc] << 8) | chip8->memory[chip8->pc + 1]) & 0xFFFF;
+
+    // printf("\nnew cycle\n");
+    // printf("0x%04X\n", chip8->pc);
+    // printf("0x%04X\n", chip8->memory[chip8->pc]);
+    // printf("0x%04X\n", chip8->opcode);
+
     // decode/execute
     switch(chip8->opcode & 0xF000) {
         case 0x0000:
@@ -68,7 +75,7 @@ void cycle(struct Chip8* chip8) {
                 case 0x0:
                     for (int i = 0; i < 2048; ++i)
                     {
-                        chip8->graphic[i] = 0;
+                        chip8->graphic[i] = 0x0;
                     }
                     chip8->updateScreen = true;
                     chip8->pc += 2;
@@ -84,7 +91,7 @@ void cycle(struct Chip8* chip8) {
             break;
         // 1NNN jumps to address NNN
         case 0x1000:
-            chip8->pc = chip8->opcode * 0xFFF;
+            chip8->pc = chip8->opcode & 0xFFF;
             break;
         // 2NNN calls subroutine at NNN
         case 0x2000:
@@ -149,7 +156,7 @@ void cycle(struct Chip8* chip8) {
                     break;
                 // 8XY4 Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
                 case 0x4:
-                    if (0xFF < chip8->V[(chip8->opcode & 0xF00) >> 8] + chip8->V[(chip8->opcode & 0xF0) >> 4]) {
+                    if ((0xFF - chip8->V[(chip8->opcode & 0xF00) >> 8]) < chip8->V[(chip8->opcode & 0xF0) >> 4]) {
                         chip8->V[0xF] = 1;
                     } else {
                         chip8->V[0xF] = 0;
@@ -160,7 +167,7 @@ void cycle(struct Chip8* chip8) {
                     break;
                 // 8XY5 VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
                 case 0x5:
-                    if (chip8->V[(chip8->opcode & 0xF00) >> 8] < chip8->V[(chip8->opcode & 0xF0) >> 8]) {
+                    if (chip8->V[(chip8->opcode & 0xF00) >> 8] < chip8->V[(chip8->opcode & 0xF0) >> 4]) {
                         chip8->V[0xF] = 0;
                     } else {
                         chip8->V[0xF] = 1;
@@ -177,7 +184,7 @@ void cycle(struct Chip8* chip8) {
                     break;
                 // 8XY7 Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
                 case 0x7:
-                    if (chip8->V[(chip8->opcode & 0xF00) >> 8] > chip8->V[(chip8->opcode & 0xF0) >> 8]) {
+                    if (chip8->V[(chip8->opcode & 0xF00) >> 8] > chip8->V[(chip8->opcode & 0xF0) >> 4]) {
                         chip8->V[0xF] = 0;
                     } else {
                         chip8->V[0xF] = 1;
@@ -187,7 +194,7 @@ void cycle(struct Chip8* chip8) {
                     break;
                 // 8XYE Shifts VX left by one. VF is set to the value of the most significant bit of VX before the shift
                 case 0xE:
-                    chip8->V[(0xF)] = chip8->V[(chip8->opcode & 0xF00) >> 8] >> 7;
+                    chip8->V[(0xF)] = (chip8->V[(chip8->opcode & 0xF00) >> 8] >> 7) & 0x1;
                     chip8->V[(chip8->opcode & 0xF00) >> 8] <<= 1;
                     chip8->pc += 2;
                     break;
@@ -250,7 +257,7 @@ void cycle(struct Chip8* chip8) {
             switch(chip8->opcode & 0xFF) {
                 // EX9E Skips the next instruction if the key stored in VX is pressed
                 case 0x9E:
-                    if (chip8->key[(chip8->opcode & 0xF00) >> 8] != 0) {
+                    if (chip8->key[chip8->V[(chip8->opcode & 0xF00) >> 8]] != 0) {
                         chip8->pc += 4;
                     } else {
                         chip8->pc += 2;
@@ -258,7 +265,7 @@ void cycle(struct Chip8* chip8) {
                     break;
                 // EXA1 Skips the next instruction if the key stored in VX isn't pressed.
                 case 0XA1:
-                    if (chip8->key[(chip8->opcode & 0xF00) >> 8] == 0) {
+                    if (chip8->key[chip8->V[(chip8->opcode & 0xF00) >> 8]] == 0) {
                         chip8->pc += 4;
                     } else {
                         chip8->pc += 2;
@@ -358,9 +365,6 @@ void cycle(struct Chip8* chip8) {
         chip8->delay_timer--;
     }
     if (chip8->sound_timer > 0) {
-        if (chip8->sound_timer == 1) {
-            printf("BEEP\n");
-        }
         chip8->sound_timer--;
     }
 
@@ -368,6 +372,7 @@ void cycle(struct Chip8* chip8) {
 
 bool load(const char* filename, struct Chip8* chip8) {
     init(chip8);
+
     printf("fopen %s\n", filename);
     FILE* fp = fopen(filename, "rb");
     if (fp == NULL) {
@@ -388,14 +393,9 @@ bool load(const char* filename, struct Chip8* chip8) {
     // file into buffer
     size_t copied_file;
     if (buffer != NULL) {
-        copied_file = fread(buffer, 1, sz, fp);
+        fread(buffer, 1, sz, fp);
     } else {
         fputs("buffer null\n", stderr);
-        return false;
-    }
-
-    if (copied_file != sz) {
-        fputs("read error", stderr);
         return false;
     }
 

@@ -1,11 +1,10 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include "chip8.h"
 #include <GL/glut.h>
 
 #define SCREEN_WIDTH 64
 #define SCREEN_HEIGHT 32
-#define MODIFIER 32
+#define MODIFIER 10
 
 struct Chip8 chip8;
 
@@ -31,13 +30,10 @@ int main(int argc, char *argv[])
 	}
 
 	// load game
-	// chip8.load = load;
 	if (!load(argv[1],&chip8)) {
 		return 1;
 	}
 
-	printf("%d\n", chip8.opcode);
-	printf("################################\n");
 
 	// setup opengl
 	glutInit(&argc, argv);
@@ -68,7 +64,9 @@ void setupTexture() {
 	{
 		for (int x = 0; x < SCREEN_WIDTH; ++x)
 		{
-			screenData[y][x][0] = screenData[y][x][1] = screenData[y][x][2] = 0;
+			screenData[y][x][0] = 0;
+			screenData[y][x][1] = 0;
+			screenData[y][x][2] = 0;
 		}
 	}
 
@@ -89,10 +87,16 @@ void updateTexture(struct Chip8* c8) {
 	// update pixels
 	for(int y = 0; y < 32; ++y)		
 		for(int x = 0; x < 64; ++x)
-			if(c8->graphic[(y * 64) + x] == 0)
-				screenData[y][x][0] = screenData[y][x][1] = screenData[y][x][2] = 0;	// Disabled
-			else 
-				screenData[y][x][0] = screenData[y][x][1] = screenData[y][x][2] = 255;  // Enabled
+			if(c8->graphic[(y * 64) + x] == 0) {
+				screenData[y][x][0] = 0;
+				screenData[y][x][1] = 0;
+				screenData[y][x][2] = 0;
+			}
+			else { 
+				screenData[y][x][0] = 255;
+				screenData[y][x][1] = 255;
+				screenData[y][x][2] = 255;
+			}
 		
 	// Update Texture
 	glTexSubImage2D(GL_TEXTURE_2D, 0 ,0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)screenData);
@@ -133,8 +137,6 @@ void updateQuads(struct Chip8* c8)
 
 void display()
 {
-	// chip8.cycle = cycle;
-	// chip8.cycle(chip8);
 	cycle(&chip8);
 	if(chip8.updateScreen)
 	{
